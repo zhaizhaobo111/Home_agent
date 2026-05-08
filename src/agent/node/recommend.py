@@ -1,14 +1,23 @@
+import os
+import uuid
 from typing import Optional
 
-from langchain_core.messages import filter_messages, HumanMessage, SystemMessage
+from dotenv import load_dotenv
+from langchain_community.agent_toolkits import SQLDatabaseToolkit
+from langchain_community.utilities import SQLDatabase
+from langchain_core.messages import filter_messages, HumanMessage, SystemMessage, AIMessage
+from langgraph.prebuilt import ToolNode
 from langgraph.runtime import Runtime
 from langgraph.store.base import BaseStore
-from onnxruntime.transformers.models.stable_diffusion.diffusion_models import BaseModel
+from langgraph.types import interrupt
+from pydantic import BaseModel
 from pydantic import Field
 
 from src.agent.common.context import ContextSchema
 from src.agent.common.llm import model
-from src.agent.state.recommend import RecommendState
+from src.agent.common.store import UserPreferences
+from src.agent.state.recommend import RecommendState, get_recommend_info
+
 
 class UserInfo(BaseModel):
     """用户的租房需求信息"""
@@ -49,7 +58,10 @@ class UserInfo(BaseModel):
 def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,store:BaseStore):
     """收集用户希望的推荐信息"""
     #1.获取需要被解析的数据，获取最新的用户消息+用户的偏好数据
+    # filter_messages 过滤函数
+    # 用户信息
     user_messages=filter_messages(state["messages"],include_types="human")
+    # 用户偏好信息
     pref=state.get("user_preferences")
     if pref and (pref["budget_min"]or pref["budget_max"]):
         extract_messages=[
@@ -88,5 +100,160 @@ def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,stor
 
     # 3.中断
     # 最新的用户消息：给我推荐房子
-    #
+    # 询问用户查询城市
+
+
+    # 检查是否缺失关键信息
+    missing_info=[]
+    # 城市为空，添加城市
+    if not updated_state.get("city"):
+        missing_info.append("**城市**")
+    if updated_state.get("budget_min")is None or updated_state.get("budget_max")is None:
+        missing_info.append("**预算范围**")
+    if missing_info:
+        prompt = f"为了给您推荐合适的房源，请提供以下信息：{', '.join(missing_info)}和其它信息。\n"
+        prompt += "如果您不想提供，请输⼊'**不提供**'，我会根据已有信息为您推荐房源。"
+        # 根据缺失的信息进行中断
+        answer=interrupt(prompt)
+        if str(answer).strip()=="不提供":
+        #已经缺失关键信息，而且用户还不提供，需要给关键信息设置默认值
+            if not updated_state.get("city"):
+                updated_state["city"]="随即城市"
+            if not updated_state.get("budget_min"):
+                updated_state["budget_min"]=500.0
+            if not updated_state.get("budget_max"):
+                updated_state["budget_max"]=5000.0
+            if not updated_state.get("room_count"):
+                updated_state["room_count"]=5
+        else:
+        # 缺失关键信息，用户已补充
+        # 讲answer构建为HumanMessage
+            user_response_message=HumanMessage(content=str(answer))
+            # 提取到的信息
+            extract_info=extract_info([user_response_message])
+            # 将提取到的信息更新到update_state里面
+            # updated_state包含了中断的结果
+            updated_state=update_state(updated_state,extract_info)
+
+    # 4.持久化处理：更新预算
+    # 最新的用户消息：北京 3套 预算：0-5000元
+    # 用户的偏好数据：预算 1000-2000
+    if updated_state.get("budget_min")or updated_state.get("budget_max"):
+        # 有可能会更新
+        user_id=runtime.context.get("user_id")
+        namespace=(user_id,"preferences")
+        # 通过namespaces拿到store里的 用户偏好数据
+
+        pre_result=store.search(namespace)
+
+        # 新增或更新操作
+        if len(pre_result)==0:
+            # pre_result没内容-》新增
+            prefs = UserPreferences(
+                budget_min=updated_state.get('budget_min'),
+                budget_max=updated_state.get('budget_max'),
+            )
+            store.put(
+                # namespace key value
+                namespace,
+                str(uuid.uuid4()),
+                prefs.model_dump(exclude_none=True)
+            )
+            updated_state["user_preferences"]=prefs.model_dump(exclude_none=True)
+        else:
+            # 有持久化信息。判断更新
+            # store: 1000-5000
+            # state: 2000 -3000 不用更新
+            #state : 500-6000  需要更新 store：500-6000
+            # 拿到value
+            prefs=pre_result[0].value
+            store_min=prefs["budget_min"]
+            store_max=prefs["budget_max"]
+            cur_min=updated_state.get("budget_min")
+            cur_max=updated_state.get("budget_max")
+            update_min=False
+            update_max=False
+            # 判断是否更新
+            if store_min and cur_min and cur_min<store_min:
+                update_min=True
+            elif not store_min and cur_min:
+                update_min=True
+            if store_max and cur_max and cur_max>store_max:
+                update_max=True
+            elif not store_min and cur_min:
+                update_max=True
+
+
+            if update_min or update_max:
+                if update_min:
+                    prefs["budget_min"] = cur_min
+                if update_max:
+                    prefs["budget_max"] = cur_max
+
+            store.put(
+                namespace,
+                pre_result[0].key,
+                prefs
+            )
+    # 5. 准备最终的消息，并更新
+    updated_state["messages"]=[HumanMessage(content=get_recommend_info(updated_state))]
+    print(f"已收集⽤⼾信息: 城市={updated_state.get('city')}, "
+          f"区域={updated_state.get('district')}, "
+          f"预算={updated_state.get('budget_min')}-{updated_state.get('budget_max')}, "
+          f"房间数={updated_state.get('room_count')}")
+
     return updated_state
+#使用.env环境变量
+load_dotenv()
+
+db_user = os.getenv('DB_USER')
+print(db_user)
+db_password = os.getenv('DB_PASSWORD')
+db_host = os.getenv('DB_HOST')
+db_port = os.getenv('DB_PORT')
+db_name = os.getenv('DB_NAME')
+db = SQLDatabase.from_uri(f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+
+# 获取数据库⼯具
+toolkit = SQLDatabaseToolkit(db=db, llm=model)
+tools = toolkit.get_tools()
+# print(tools)
+
+# 节点：获取表信息
+get_schema_tool=next(tool for tool in tools if tool.name=="sql_db_schema")
+get_schema_node=ToolNode([get_schema_tool],name="get_schema")#工具执行节点
+# 节点：执行sql查询
+run_query_tool=next(tool for tool in tools if tool.name=="sql_db_query")
+run_query_node=ToolNode([run_query_tool],name="run_query")#工具执行节点
+
+def list_tables(state:RecommendState):
+    # 1.获取AIMessages(tool_calls): 调用llm_call
+    #（手动模拟）
+    tool_call={
+        "name":"sql_db_list_tables",
+        "args":{},
+        "id":"123",
+        "type":"tool_call",
+    }
+    # 2.手动调用工具：sql_db_list_tables
+    # 模拟必定调用工具
+    tool_call_message=AIMessage(content="",tool_calls=[tool_call])
+    list_tables_tool=next(tool for tool in tools if tool.name=="sql_db_list_tables")
+    tool_message=list_tables_tool.invoke(tool_call)
+
+    # 3.整合结果
+    response=AIMessage(content=f"可用的的表:{tool_message.content}")
+    # aiMessage(tool_call) toolMessage aiMessage
+    return {
+        "messages":[tool_call_message,tool_message,response]
+    }
+# 节点：绑定工具（获取表信息），让llm来必定执行工具节点
+def call_get_schema(state:RecommendState):
+    # tool_choice="any") 必定调用tool_call
+    llm_with_tools=model.bind_tools([get_schema_tool],tool_choice="any")
+
+    response=llm_with_tools.invoke(state["messages"])
+    return {
+        "message":[response]
+    }
+# 构造sql

@@ -24,7 +24,7 @@ class ReservedInfo(BaseModel):
         description="预定的房源所在地区"
     )
 
-class UserPreference(BaseModel):
+class UserPreferences(BaseModel):
     """用户偏好数据"""
     budge_min:Optional[float]=Field(
         default=None,
