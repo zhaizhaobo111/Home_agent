@@ -219,13 +219,18 @@ toolkit = SQLDatabaseToolkit(db=db, llm=model)
 tools = toolkit.get_tools()
 # print(tools)
 
+# ⼯具节点封装
 # 节点：获取表信息
-get_schema_tool=next(tool for tool in tools if tool.name=="sql_db_schema")
+get_schema_tool=next(tool for tool in tools if tool.name=="sql_db_schema")#获取表的详细信息，如表结构、⽰例数据等。
 get_schema_node=ToolNode([get_schema_tool],name="get_schema")#工具执行节点
 # 节点：执行sql查询
-run_query_tool=next(tool for tool in tools if tool.name=="sql_db_query")
+run_query_tool=next(tool for tool in tools if tool.name=="sql_db_query")#⽤来执⾏ SQL
 run_query_node=ToolNode([run_query_tool],name="run_query")#工具执行节点
 
+# QuerySQLDatabaseTool ：执⾏ SQL 查询并返回结果。
+# ◦ InfoSQLDatabaseTool ：获取指定表的 schema 和⽰例数据。
+# ◦ ListSQLDatabaseTool ：列出数据库中的所有表。
+# ◦ QuerySQLCheckerTool ：在运⾏前检查 SQL 查询的正确性。
 def list_tables(state:RecommendState):
     # 1.获取AIMessages(tool_calls): 调用llm_call
     #（手动模拟）
@@ -236,18 +241,21 @@ def list_tables(state:RecommendState):
         "type":"tool_call",
     }
     # 2.手动调用工具：sql_db_list_tables
+    #AIMessage(tool_call)
     # 模拟必定调用工具
     tool_call_message=AIMessage(content="",tool_calls=[tool_call])
+    #ToolMessage
     list_tables_tool=next(tool for tool in tools if tool.name=="sql_db_list_tables")
     tool_message=list_tables_tool.invoke(tool_call)
 
-    # 3.整合结果
+    #AIMessage
     response=AIMessage(content=f"可用的的表:{tool_message.content}")
+    # 3.整合结果
     # aiMessage(tool_call) toolMessage aiMessage
     return {
         "messages":[tool_call_message,tool_message,response]
     }
-# 节点：绑定工具（获取表信息），让llm来必定执行工具节点
+# 节点：绑定工具（获取表信息），让llm来必定执行工具节点,构建AIMessage（tool_call）
 def call_get_schema(state:RecommendState):
     # tool_choice="any") 必定调用tool_call
     llm_with_tools=model.bind_tools([get_schema_tool],tool_choice="any")
@@ -257,3 +265,57 @@ def call_get_schema(state:RecommendState):
         "message":[response]
     }
 # 构造sql
+def generate_query(state:RecommendState):
+    # 1. ⽤来⽣成查询 SQL 的⼯具调⽤。（⽣成第⼀个 AI message）
+    # 2. ⽣成最终结果。（⽣成最后⼀个 AI message）
+    generate_query_system_prompt =  """
+    您是⼀个设计⽤于与SQL数据库交互的代理。
+    给定⼀个输⼊问题，创建⼀个语法正确的{dialect}查询来运⾏，然后查看查询的结果并返回答案。
+    需要根据rows from table的⽰例设置真实查询的值。
+    除⾮⽤⼾指定了他们希望获得的特定数量的⽰例，否则始终将查询限制为最多{top_k}个结果。
+    您可以按相关列对结果排序，以返回最感兴趣的结果。不要查询特定表中的所有列，只查询给定问题的
+    相关列。
+    不要对数据库做任何DML语句（INSERT， UPDATE， DELETE， DROP等)。
+    """
+    system_prompt=generate_query_system_prompt.format(
+        dialect=db.dialect,
+        top_k=state.get('room_count', 5) or 5
+    )
+    system_message=SystemMessage(content=system_prompt)
+    model_with_tool=model.bind_tools([run_query_tool])
+    response=model_with_tool.invoke([system_message]+state["messages"])
+    return {
+        "messages":[response]
+    }
+
+def check_query(state:RecommendState):
+    check_query_system_prompt = """
+    你是⼀个⾮常注重细节的SQL专家。仔细检查{dialect}查询中的常⻅错误，包括：
+    -使⽤NULL值的NOT IN
+    -在应该使⽤UNION ALL时使⽤UNION
+    -使⽤BETWEEN表⽰独占范围
+    -谓词中的数据类型不匹配
+    -正确引⽤标识符
+    -使⽤正确数量的函数参数
+    -转换为正确的数据类型
+    -使⽤合适的列进⾏连接
+    如果存在上述任何错误，请重写查询。如果没有错误，只需复制原始查询即可。
+    在运⾏此检查之后，您将调⽤适当的⼯具来执⾏查询。
+    """
+    prompt=check_query_system_prompt.format(
+        dialect=db.dialect
+    )
+    system_message=SystemMessage(content=prompt)
+    # ⽣成⼈⼯⽤⼾消息进⾏检查
+    # 上⼀个节点是generate_query。如果⾛到这，必定调⽤了⼯具。这样获取到的SQL是准确的。
+    # 直接把sql当作用户消息传入进行检查
+    tool_call=state["messages"][-1].tool_calls[0]
+    user_message=HumanMessage(content=tool_call["args"]["query"])
+    model_with_tool=model.bind_tools([run_query_tool],tool_choice="any")
+    response=model_with_tool.invoke([system_message,user_message])
+    # 目前最新的一个消息是AIMessages(tool_call)->response 可以合成一个
+    response.id=state["messages"][-1].id
+    return {
+        "messages":[response]
+    }
+
