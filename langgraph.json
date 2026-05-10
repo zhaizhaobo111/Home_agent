@@ -2,7 +2,8 @@
   "$schema": "https://langgra.ph/schema.json",
   "dependencies": ["."],
   "graphs": {
-    "agent": "./src/agent/graph.py:graph"
+    "agent": "./src/agent/graph.py:graph",
+    "recommend_graph_agent": "./src/agent/recommend.py:recommend_graph.py"
   },
   "env": ".env",
   "image_distro": "wolfi"
