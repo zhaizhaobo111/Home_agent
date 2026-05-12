@@ -17,7 +17,8 @@ builder.add_node("run_query",run_query_node)
 builder.add_edge(START,"collect_user_info")
 builder.add_edge("collect_user_info","list_tables")
 builder.add_edge("list_tables","call_get_schema")
-builder.add_edge("call_get_schema","generate_query")
+builder.add_edge("call_get_schema","get_schema")
+builder.add_edge("get_schema","generate_query")
 def conditions(state:RecommendState):
     if not state["messages"][-1].tool_calls:
         return END
@@ -30,3 +31,4 @@ builder.add_conditional_edges(
 builder.add_edge("check_query","run_query")
 builder.add_edge("run_query","generate_query")
 recommend_graph=builder.compile()
+# print(recommend_graph.get_graph(xray=True).draw_mermaid())
