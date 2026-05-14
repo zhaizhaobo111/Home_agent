@@ -102,7 +102,7 @@ Args:
 tool_node=ToolNode([generate_orders])
 # 节点： 执行模型：1.决定执行工具2.返回最终结果
 def call_orders(state: ReserveState):
-    result=model.bind_tools([tool_node]).invoke(
+    result=model.bind_tools([generate_orders]).invoke(
         [SystemMessage(content="你是⼀个⼯单⽣成的助⼿，⽀持调⽤⼯具进⾏房源预定⼯单⽣成。⽀持查看查询的结果并返回最终答案")]
         +state["messages"]
     )

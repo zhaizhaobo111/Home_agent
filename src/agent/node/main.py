@@ -13,7 +13,10 @@ from src.agent.state.main import State, NeedReserveOotPut
 # 节点：查询持久化信息
 def get_store_info(state:State,runtime:Runtime[ContextSchema],*,store:BaseStore):
     # 搜索用户消息
-    user_id=runtime.context.get("user_id")
+    # user_id=runtime.context.get("user_id")
+    user_id = runtime.context.get("user_id") if runtime.context else None
+    if not user_id:
+        return {"user_preferences": {}}
     namespace=(user_id,"preferences")
     prefs_result=store.search(namespace)
     if prefs_result and prefs_result[0]:
@@ -37,7 +40,7 @@ def identify_question(state:State):
     """
     user_intent=model.with_structured_output(UserIntendMessage).invoke(
         [SystemMessage(content=prompt)]
-        +state["messages"]
+        +[state["messages"][-1]]
     )
     return {
         "user_intent":user_intent.type
@@ -58,14 +61,14 @@ def get_user_preferences(state:State):
     prefs=state.get("user_preferences",{})
     # 筛选用户信息,获取到用户问题
     user_messages=filter_messages(state["messages"],include_types="human")
-    reserved_info=prefs.get("reserved_indo",[])
+    reserved_info=prefs.get("reserved_info",[])
+    reserved_str = "\n"
     if reserved_info:
-        reserved_str="\n"
         for i,item in enumerate(reserved_info,1):
-            reserved_str+=f"{i}. 预定⼯单ID: {item.get('order_id')}, " \
-                            f"房源标题: {item.get('title')}, " \
-                            f"预定电话: {item.get('phone_number')}\n"
-    model.invoke(
+            reserved_str+=f"{i}. 预定⼯单ID: {item.order_id}, " \
+                            f"房源标题: {item.title}, " \
+                            f"预定电话: {item.phone_number}\n"
+    response=model.invoke(
         [SystemMessage(content="""你是⼀个乐于助⼈的助⼿，可以根据⽤⼾偏好信息进⾏回复。
 如果有的偏好数据为空，不要猜测或编造数据。
 不要直接回复偏好数据是什么，要结合问题进⾏⽣动回复。
@@ -75,6 +78,8 @@ def get_user_preferences(state:State):
 f"1. 最低预算：{prefs.get('budget_min')}"
 f"2. 最⾼预算：{prefs.get('budget_max')}"
 f"3. 已预定过的信息：{reserved_str}")]
-        +user_messages[-1]
-
+        +[user_messages[-1]]
     )
+    return {
+        "messages":[response]
+    }

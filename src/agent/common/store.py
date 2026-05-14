@@ -26,12 +26,12 @@ class ReservedInfo(BaseModel):
 
 class UserPreferences(BaseModel):
     """用户偏好数据"""
-    budge_min:Optional[float]=Field(
+    budget_min:Optional[float]=Field(
         default=None,
         description="用户的最低预算。单位：元/月"
     )
     """用户偏好数据"""
-    budge_max:Optional[float]=Field(
+    budget_max:Optional[float]=Field(
         default=None,
         description="用户的最高预算。单位：元/月"
     )

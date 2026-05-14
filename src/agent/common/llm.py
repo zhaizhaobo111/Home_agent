@@ -1,11 +1,11 @@
-# from langchain.chat_models import init_chat_model
-#
-# model=init_chat_model("qwen-turbo",model_provider="tongyi",temperature=0)
+import os
+
+from dotenv import load_dotenv
 from langchain_community.chat_models import ChatTongyi
+load_dotenv(override=True)
 
 model = ChatTongyi(
-    model_name="qwen-turbo",
-    dashscope_api_key="sk-3b066661f42f49c9971861631950c710",  # 你的通义KEY
+    model="qwen-turbo",
+    dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
     temperature=0
 )
-# print(model.invoke("你好"))

@@ -32,11 +32,11 @@ class UserInfo(BaseModel):
     )
     budget_min: Optional[float] = Field(
         default=None,
-        description="⽤⼾的最低预算，单位为元/⽉"
+        description="用户的最低预算，单位为元/月，如果是xx以内，要设置最小值为0"
     )
     budget_max: Optional[float] = Field(
         default=None,
-        description="⽤⼾的最⾼预算，单位为元/⽉"
+        description="用户的最⾼预算，单位为元/月，如果是xx以上，最大值设为10000"
     )
     room_type: Optional[str] = Field(
         default=None,
@@ -63,7 +63,7 @@ def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,stor
     user_messages=filter_messages(state["messages"],include_types="human")
     # 用户偏好信息
     pref=state.get("user_preferences")
-    if pref and (pref["budget_min"]or pref["budget_max"]):
+    if pref and (pref.get("budget_min") is not None or pref.get("budget_max") is not None):
         extract_messages=[
             HumanMessage(content="用户的历史偏好信息如下："
                                  f"1.最低预算：{pref["budget_min"]}"
@@ -71,7 +71,7 @@ def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,stor
                          user_messages[-1]
         ]
     else:
-        extract_messages=user_messages[-1]
+        extract_messages=[user_messages[-1]]
 
     #2.提取信息(LLM结构化返回)
     def extract_info(messages)->UserInfo:
@@ -111,14 +111,14 @@ def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,stor
     if updated_state.get("budget_min")is None or updated_state.get("budget_max")is None:
         missing_info.append("**预算范围**")
     if missing_info:
-        prompt = f"为了给您推荐合适的房源，请提供以下信息：{', '.join(missing_info)}和其它信息。\n"
-        prompt += "如果您不想提供，请输⼊'**不提供**'，我会根据已有信息为您推荐房源。"
+        prompt = f"为了给您推荐合适的房源，还需要您补充以下需求信息：{', '.join(missing_info)}。\n"
+        prompt += "例如：'北京 预算3000-5000'，或者输入'**跳过**'，我会使用默认条件为您推荐。"
         # 根据缺失的信息进行中断
         answer=interrupt(prompt)
-        if str(answer).strip()=="不提供":
+        if str(answer).strip() in ("跳过", "不提供"):
         #已经缺失关键信息，而且用户还不提供，需要给关键信息设置默认值
             if not updated_state.get("city"):
-                updated_state["city"]="随即城市"
+                updated_state["city"]="随机城市"
             if not updated_state.get("budget_min"):
                 updated_state["budget_min"]=500.0
             if not updated_state.get("budget_max"):
@@ -127,13 +127,22 @@ def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,stor
                 updated_state["room_count"]=5
         else:
         # 缺失关键信息，用户已补充
-        # 讲answer构建为HumanMessage
+        # 将answer构建为HumanMessage
             user_response_message=HumanMessage(content=str(answer))
             # 提取到的信息
-            extract_info=extract_info([user_response_message])
+            extracted=extract_info([user_response_message])
             # 将提取到的信息更新到update_state里面
             # updated_state包含了中断的结果
-            updated_state=update_state(updated_state,extract_info)
+            updated_state=update_state(updated_state,extracted)
+            # 补充默认值，确保流程继续
+            if not updated_state.get("city"):
+                updated_state["city"]="随机城市"
+            if updated_state.get("budget_min") is None:
+                updated_state["budget_min"]=500.0
+            if updated_state.get("budget_max") is None:
+                updated_state["budget_max"]=5000.0
+            if not updated_state.get("room_count"):
+                updated_state["room_count"]=5
 
     # 4.持久化处理：更新预算
     # 最新的用户消息：北京 3套 预算：0-5000元
@@ -167,20 +176,23 @@ def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,stor
             #state : 500-6000  需要更新 store：500-6000
             # 拿到value
             prefs=pre_result[0].value
-            store_min=prefs["budget_min"]
-            store_max=prefs["budget_max"]
+            store_min=prefs.get("budget_min")
+            store_max=prefs.get("budget_max")
             cur_min=updated_state.get("budget_min")
             cur_max=updated_state.get("budget_max")
             update_min=False
             update_max=False
             # 判断是否更新
-            if store_min and cur_min and cur_min<store_min:
+            if store_min is not None and cur_min is not None and cur_min<store_min:
+                # 都不为空，比较
                 update_min=True
-            elif not store_min and cur_min:
+            elif  store_min is None and cur_min is not None:
                 update_min=True
-            if store_max and cur_max and cur_max>store_max:
+
+
+            if store_max is not None and cur_max is not None and cur_max>store_max:
                 update_max=True
-            elif not store_min and cur_min:
+            elif store_min is None  and cur_min is not None:
                 update_max=True
 
 
@@ -207,7 +219,7 @@ def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,stor
 load_dotenv()
 
 db_user = os.getenv('DB_USER')
-print(db_user)
+# print(db_user)
 db_password = os.getenv('DB_PASSWORD')
 db_host = os.getenv('DB_HOST')
 db_port = os.getenv('DB_PORT')
@@ -257,12 +269,12 @@ def list_tables(state:RecommendState):
     }
 # 节点：绑定工具（获取表信息），让llm来必定执行工具节点,构建AIMessage（tool_call）
 def call_get_schema(state:RecommendState):
-    # tool_choice="any") 必定调用tool_call
-    llm_with_tools=model.bind_tools([get_schema_tool],tool_choice="any")
-
-    response=llm_with_tools.invoke(state["messages"])
+    # 通过系统提示词强制要求调用工具
+    system_msg = SystemMessage(content="你必须调用提供的工具来获取数据库表结构信息。不要尝试直接回答用户问题。")
+    llm_with_tools=model.bind_tools([get_schema_tool])
+    response=llm_with_tools.invoke([system_msg] + state["messages"])
     return {
-        "message":[response]
+        "messages":[response]
     }
 # 构造sql
 def generate_query(state:RecommendState):
@@ -306,12 +318,14 @@ def check_query(state:RecommendState):
         dialect=db.dialect
     )
     system_message=SystemMessage(content=prompt)
-    # ⽣成⼈⼯⽤⼾消息进⾏检查
+    # ⽣成⼈工用户消息进⾏检查
     # 上⼀个节点是generate_query。如果⾛到这，必定调⽤了⼯具。这样获取到的SQL是准确的。
     # 直接把sql当作用户消息传入进行检查
     tool_call=state["messages"][-1].tool_calls[0]
-    user_message=HumanMessage(content=tool_call["args"]["query"])
-    model_with_tool=model.bind_tools([run_query_tool],tool_choice="any")
+    args = tool_call["args"]
+    query = args.get("query") if hasattr(args, "get") else args.query
+    user_message=HumanMessage(content=query)
+    model_with_tool=model.bind_tools([run_query_tool])
     response=model_with_tool.invoke([system_message,user_message])
     # 目前最新的一个消息是AIMessages(tool_call)->response 可以合成一个
     response.id=state["messages"][-1].id
