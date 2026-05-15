@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏠 租房小助手</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary: #6C63FF;
+  --primary-dark: #5A52D5;
+  --accent: #FF6B6B;
+  --bg: #F0F2F5;
+  --bubble-user: #6C63FF;
+  --bubble-ai: #FFFFFF;
+  --text: #333;
+  --text-light: #888;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.chat-container {
+  width: 480px;
+  height: 92vh;
+  background: #F7F8FA;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(108,99,255,0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, #6C63FF 0%, #A78BFA 50%, #F472B6 100%);
+  padding: 18px 24px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-icon {
+  font-size: 28px;
+  animation: bounce 2s infinite;
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.header-text h1 { font-size: 18px; font-weight: 600; }
+.header-text p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+.status-dot {
+  width: 8px; height: 8px;
+  background: #4ADE80;
+  border-radius: 50%;
+  margin-left: auto;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Chat Area ── */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px;
+  scroll-behavior: smooth;
+}
+.chat-area::-webkit-scrollbar { width: 4px; }
+.chat-area::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+
+.msg {
+  display: flex;
+  margin-bottom: 16px;
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.msg.user { justify-content: flex-end; }
+.msg.ai { justify-content: flex-start; }
+
+.msg-bubble {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.msg.user .msg-bubble {
+  background: var(--bubble-user);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.msg.ai .msg-bubble {
+  background: var(--bubble-ai);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+  box-shadow: var(--shadow);
+}
+.msg-emoji {
+  font-size: 20px;
+  margin: 0 6px;
+  align-self: flex-end;
+}
+
+/* ── Interrupt Card ── */
+.interrupt-card {
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  border: 2px solid #F59E0B;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+.interrupt-card .card-icon { font-size: 24px; margin-bottom: 8px; }
+.interrupt-card .card-text {
+  font-size: 14px;
+  color: #92400E;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+.interrupt-card .card-actions {
+  display: flex;
+  gap: 8px;
+}
+.interrupt-card .card-actions input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #F59E0B;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  background: white;
+}
+.interrupt-card .card-actions input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.2);
+}
+.interrupt-card .card-actions button {
+  padding: 10px 20px;
+  background: #F59E0B;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.interrupt-card .card-actions button:hover {
+  background: #D97706;
+  transform: translateY(-1px);
+}
+
+/* ── Quick Reply Buttons ── */
+.quick-replies {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.quick-btn {
+  padding: 6px 14px;
+  background: white;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.quick-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* ── Loading ── */
+.typing-indicator {
+  display: none;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 16px;
+  border-bottom-left-radius: 4px;
+  box-shadow: var(--shadow);
+  width: fit-content;
+  margin-bottom: 16px;
+}
+.typing-indicator.show { display: flex; gap: 6px; align-items: center; }
+.typing-dot {
+  width: 8px; height: 8px;
+  background: #A78BFA;
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-8px); }
+}
+
+/* ── Input Area ── */
+.input-area {
+  padding: 12px 16px;
+  background: white;
+  border-top: 1px solid #E5E7EB;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.input-area input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #E5E7EB;
+  border-radius: 12px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-area input:focus {
+  border-color: var(--primary);
+}
+.input-area button {
+  width: 44px; height: 44px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.input-area button:hover {
+  background: var(--primary-dark);
+  transform: scale(1.05);
+}
+.input-area button:disabled {
+  background: #D1D5DB;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Welcome ── */
+.welcome {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-light);
+}
+.welcome-icon { font-size: 48px; margin-bottom: 16px; }
+.welcome h2 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+.welcome p { font-size: 13px; line-height: 1.8; }
+.welcome .examples {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.example-btn {
+  padding: 10px 20px;
+  background: white;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 80%;
+}
+.example-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="header">
+    <div class="header-icon">🏠</div>
+    <div class="header-text">
+      <h1>租房小助手</h1>
+      <p>智能推荐 · 一键预定</p>
+    </div>
+    <div class="status-dot" id="statusDot"></div>
+  </div>
+
+  <div class="chat-area" id="chatArea">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">🏘️</div>
+      <h2>你好，想找什么样的房子？</h2>
+      <p>告诉我你的需求，我来帮你推荐~</p>
+      <div class="examples">
+        <button class="example-btn" onclick="sendExample(this)">🔍 帮我推荐北京 3000-5000 的房子</button>
+        <button class="example-btn" onclick="sendExample(this)">📍 西安雁塔区两室一厅</button>
+        <button class="example-btn" onclick="sendExample(this)">📋 看看我的历史记录</button>
+      </div>
+    </div>
+    <div class="typing-indicator" id="typing">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="msgInput" placeholder="输入你的需求..." autocomplete="off">
+    <button id="sendBtn" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let threadId = null;
+let isProcessing = false;
+
+// ── Init ──
+(async () => {
+  try {
+    const resp = await fetch(`${API}/threads`, { method: 'POST' });
+    const data = await resp.json();
+    threadId = data.thread_id;
+    document.getElementById('statusDot').style.background = '#4ADE80';
+  } catch (e) {
+    document.getElementById('statusDot').style.background = '#EF4444';
+    addSystemMessage('⚠️ 无法连接后端服务，请确保 langgraph dev 和 server.py 已启动');
+  }
+})();
+
+// ── Enter key ──
+document.getElementById('msgInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+function sendExample(btn) {
+  document.getElementById('msgInput').value = btn.textContent.replace(/^[^\s]+\s/, '');
+  sendMessage();
+}
+
+// ── Send Message ──
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text || isProcessing || !threadId) return;
+
+  input.value = '';
+  hideWelcome();
+  addMessage('user', text);
+  await streamRun({ input: { messages: [{ role: 'user', content: text }] } });
+}
+
+// ── Resume Interrupt ──
+async function resumeInterrupt(value) {
+  hideWelcome();
+  addMessage('user', value);
+  await streamRun({ command: { resume: value } });
+}
+
+// ── Stream Run ──
+async function streamRun(body) {
+  setProcessing(true);
+  showTyping();
+
+  try {
+    const resp = await fetch(`${API}/threads/${threadId}/runs/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistant_id: 'house_agent',
+        config: {
+          configurable: { user_id: 'web_user' }
+        },
+        ...body
+      })
+    });
+
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finalText = '';
+    let interruptValue = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          var currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          const dataStr = line.slice(6);
+          try {
+            const data = JSON.parse(dataStr);
+
+            // Handle __interrupt__ event
+            if (currentEvent === '__interrupt__' || (Array.isArray(data) && data[0]?.value)) {
+              if (data[0]?.value) {
+                interruptValue = data[0].value;
+              } else if (data?.value) {
+                interruptValue = data.value;
+              }
+            }
+
+            // Handle values event - extract AI messages
+            if (currentEvent === 'values' && data?.messages) {
+              const msgs = data.messages;
+              const lastMsg = msgs[msgs.length - 1];
+              if (lastMsg && (lastMsg.type === 'ai' || lastMsg.role === 'ai') && lastMsg.content) {
+                // Skip tool call messages
+                if (!lastMsg.tool_calls || lastMsg.tool_calls.length === 0) {
+                  finalText = lastMsg.content;
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+    }
+
+    hideTyping();
+
+    if (interruptValue) {
+      showInterrupt(interruptValue);
+    } else if (finalText) {
+      addMessage('ai', finalText);
+    } else {
+      addMessage('ai', '🤔 暂时无法理解您的意思，请换个说法试试~');
+    }
+  } catch (e) {
+    hideTyping();
+    addSystemMessage('❌ 请求失败：' + e.message);
+  } finally {
+    setProcessing(false);
+  }
+}
+
+// ── UI Helpers ──
+function addMessage(role, text) {
+  const area = document.getElementById('chatArea');
+  const typing = document.getElementById('typing');
+
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  const emoji = role === 'user' ? '<span class="msg-emoji">👤</span>' : '';
+  const emojiLeft = role === 'ai' ? '<span class="msg-emoji">🏠</span>' : '';
+
+  div.innerHTML = `
+    ${role === 'ai' ? emojiLeft : ''}
+    <div class="msg-bubble">${escapeHtml(text)}</div>
+    ${role === 'user' ? emoji : ''}
+  `;
+
+  area.insertBefore(div, typing);
+  scrollToBottom();
+}
+
+function addSystemMessage(text) {
+  const area = document.getElementById('chatArea');
+  const typing = document.getElementById('typing');
+
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.innerHTML = `<div class="msg-bubble" style="background:#FEF3C7;color:#92400E;text-align:center;width:100%;max-width:100%">${text}</div>`;
+  area.insertBefore(div, typing);
+  scrollToBottom();
+}
+
+function showInterrupt(prompt) {
+  const area = document.getElementById('chatArea');
+  const typing = document.getElementById('typing');
+
+  const card = document.createElement('div');
+  card.className = 'interrupt-card';
+  card.innerHTML = `
+    <div class="card-icon">💬</div>
+    <div class="card-text">${escapeHtml(prompt)}</div>
+    <div class="card-actions">
+      <input type="text" placeholder="输入你的回答..." id="interruptInput">
+      <button onclick="submitInterrupt(this)">发送</button>
+    </div>
+    <div class="quick-replies">
+      <button class="quick-btn" onclick="quickReply(this, '跳过')">跳过</button>
+      <button class="quick-btn" onclick="quickReply(this, '需要')">需要</button>
+      <button class="quick-btn" onclick="quickReply(this, '不需要')">不需要</button>
+    </div>
+  `;
+
+  area.insertBefore(card, typing);
+  scrollToBottom();
+
+  // Focus the interrupt input
+  setTimeout(() => {
+    const inp = card.querySelector('#interruptInput');
+    if (inp) {
+      inp.focus();
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          submitInterrupt(inp);
+        }
+      });
+    }
+  }, 100);
+}
+
+function submitInterrupt(el) {
+  const card = el.closest('.interrupt-card');
+  const input = card.querySelector('input');
+  const value = input.value.trim() || '跳过';
+
+  // Remove the interrupt card
+  card.remove();
+
+  // Resume with user's answer
+  resumeInterrupt(value);
+}
+
+function quickReply(btn, value) {
+  const card = btn.closest('.interrupt-card');
+  card.remove();
+  resumeInterrupt(value);
+}
+
+function showTyping() {
+  document.getElementById('typing').classList.add('show');
+  scrollToBottom();
+}
+function hideTyping() {
+  document.getElementById('typing').classList.remove('show');
+}
+function hideWelcome() {
+  const w = document.getElementById('welcome');
+  if (w) w.style.display = 'none';
+}
+function setProcessing(v) {
+  isProcessing = v;
+  document.getElementById('sendBtn').disabled = v;
+  document.getElementById('msgInput').disabled = v;
+}
+function scrollToBottom() {
+  const area = document.getElementById('chatArea');
+  setTimeout(() => area.scrollTop = area.scrollHeight, 50);
+}
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

@@ -149,7 +149,9 @@ def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,stor
     # 用户的偏好数据：预算 1000-2000
     if updated_state.get("budget_min")or updated_state.get("budget_max"):
         # 有可能会更新
-        user_id=runtime.context.get("user_id")
+        user_id = runtime.context.get("user_id") if runtime.context else None
+        if not user_id:
+            return updated_state
         namespace=(user_id,"preferences")
         # 通过namespaces拿到store里的 用户偏好数据
 
@@ -192,7 +194,7 @@ def collect_user_info(state:RecommendState,runtime:Runtime[ContextSchema],*,stor
 
             if store_max is not None and cur_max is not None and cur_max>store_max:
                 update_max=True
-            elif store_min is None  and cur_min is not None:
+            elif store_max is None  and cur_max is not None:
                 update_max=True
 
 

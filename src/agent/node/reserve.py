@@ -74,7 +74,9 @@ Args:
         title=title,
     )
     # 3. 持久化存储
-    user_id=runtime.context.get("user_id")
+    user_id = runtime.context.get("user_id") if runtime.context else None
+    if not user_id:
+        return f"预定失败：无法获取用户信息"
     namespace=(user_id,"preferences")
     # 查询
     prefs_result=store.search(namespace)
@@ -91,7 +93,7 @@ Args:
     else:
         # 有偏好数据更新
         prefs=prefs_result[0].value or {}
-        prefs.setdefault("reserved_info",[]).append(reserved_info)
+        prefs.setdefault("reserved_info",[]).append(reserved_info.model_dump())
         store.put(
             namespace,
             prefs_result[0].key,
