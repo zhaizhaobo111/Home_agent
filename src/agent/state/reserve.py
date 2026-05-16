@@ -1,9 +1,10 @@
+from typing import Optional
 from langgraph.graph import MessagesState
 
 
 class ReserveState(MessagesState):
-    title: str  # 预定的房源
-    phone_number: str  # 预定电话
-    id_card: str  # ⾝份证
+    title: Optional[str] = None  # 预定的房源
+    phone_number: Optional[str] = None  # 预定电话
+    id_card: Optional[str] = None  # ⾝份证
 
 

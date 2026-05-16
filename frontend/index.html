@@ -343,7 +343,7 @@ let isProcessing = false;
 // ── Init ──
 (async () => {
   try {
-    const resp = await fetch(`${API}/threads`, { method: 'POST' });
+    const resp = await fetch(`${API}/threads`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     const data = await resp.json();
     threadId = data.thread_id;
     document.getElementById('statusDot').style.background = '#4ADE80';
@@ -429,7 +429,33 @@ async function streamRun(body) {
           try {
             const data = JSON.parse(dataStr);
 
-            // Handle __interrupt__ event
+            // Helper: check if a message is a final AI text response
+            function isAiTextMsg(msg) {
+              if (!msg) return false;
+              const t = msg.type || msg.role || '';
+              if (t !== 'ai' && t !== 'assistant' && t !== 'AIMessage') return false;
+              if (msg.tool_calls && msg.tool_calls.length > 0) return false;
+              const c = msg.content;
+              return c && (typeof c === 'string' ? c.trim() : true);
+            }
+
+            // Handle values / updates events
+            if (currentEvent === 'values' || currentEvent === 'updates') {
+              // Check for __interrupt__ inside values event data
+              if (data?.__interrupt__ && Array.isArray(data.__interrupt__) && data.__interrupt__[0]?.value) {
+                interruptValue = data.__interrupt__[0].value;
+              }
+              // Extract AI text messages
+              if (data?.messages) {
+                const msgs = data.messages;
+                const lastMsg = msgs[msgs.length - 1];
+                if (isAiTextMsg(lastMsg)) {
+                  finalText = typeof lastMsg.content === 'string' ? lastMsg.content : JSON.stringify(lastMsg.content);
+                }
+              }
+            }
+
+            // Handle standalone __interrupt__ event
             if (currentEvent === '__interrupt__' || (Array.isArray(data) && data[0]?.value)) {
               if (data[0]?.value) {
                 interruptValue = data[0].value;
@@ -438,15 +464,11 @@ async function streamRun(body) {
               }
             }
 
-            // Handle values event - extract AI messages
-            if (currentEvent === 'values' && data?.messages) {
-              const msgs = data.messages;
-              const lastMsg = msgs[msgs.length - 1];
-              if (lastMsg && (lastMsg.type === 'ai' || lastMsg.role === 'ai') && lastMsg.content) {
-                // Skip tool call messages
-                if (!lastMsg.tool_calls || lastMsg.tool_calls.length === 0) {
-                  finalText = lastMsg.content;
-                }
+            // Handle messages event (full message list from stream)
+            if (currentEvent === 'messages' && Array.isArray(data)) {
+              const lastMsg = data[data.length - 1];
+              if (isAiTextMsg(lastMsg)) {
+                finalText = typeof lastMsg.content === 'string' ? lastMsg.content : JSON.stringify(lastMsg.content);
               }
             }
           } catch {}
@@ -456,11 +478,12 @@ async function streamRun(body) {
 
     hideTyping();
 
+    if (finalText) {
+      addMessage('ai', finalText);
+    }
     if (interruptValue) {
       showInterrupt(interruptValue);
-    } else if (finalText) {
-      addMessage('ai', finalText);
-    } else {
+    } else if (!finalText) {
       addMessage('ai', '🤔 暂时无法理解您的意思，请换个说法试试~');
     }
   } catch (e) {

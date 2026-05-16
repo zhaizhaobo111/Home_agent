@@ -43,7 +43,7 @@ def identify_question(state:State):
         +[state["messages"][-1]]
     )
     return {
-        "user_intent":user_intent.type
+        "user_intent":user_intent.type if user_intent else "others"
     }
 
 # 节点：中断询问是否需要帮助预定房源

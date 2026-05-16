@@ -1,6 +1,7 @@
+import re
 import uuid
 from typing import Annotated, Any
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langgraph.prebuilt import ToolNode, ToolRuntime, InjectedStore
 from langgraph.types import interrupt
 from langchain.tools import tool
@@ -8,33 +9,47 @@ from src.agent.common.llm import model
 from src.agent.common.store import ReservedInfo, UserPreferences
 from src.agent.state.reserve import ReserveState
 
+_CANCEL_KEYWORDS = {"取消", "退出", "不需要", "跳过", "算了"}
+
+def _is_cancel(text: str) -> bool:
+    return text.strip() in _CANCEL_KEYWORDS
 
 def get_title(state: ReserveState):
-    prompt = "请输⼊要预定的房源名称"
+    prompt = '请输⼊要预定的房源名称（输⼊"取消"可退出）'
     while True:
         title = interrupt(prompt)
-        if title: # 可以进⾏验证
-            return {"title": title}
-        # 每次验证失败后，提⽰信息会更新
-        prompt = f"'{title}' 不是⼀个有效的房源名称，请更正。"
-# 节点：获取⽤⼾预定电话
+        if _is_cancel(title):
+            return {"cancel": True}
+        if not title or not title.strip():
+            prompt = "房源名称不能为空，请重新输⼊。"
+        else:
+            return {"title": title.strip()}
+
 def get_phone(state: ReserveState):
-    prompt = "请输⼊要预定的⼿机号"
+    prompt = '请输⼊要预定的⼿机号（输⼊"取消"可退出）'
     while True:
         phone_number = interrupt(prompt)
-        if phone_number: # 可以进⾏验证
-            return {"phone_number": phone_number}
-        # 每次验证失败后，提⽰信息会更新
-        prompt = f"'{phone_number}' 不是⼀个有效的电话，请更正。"
-# 节点：获取⽤⼾⾝份证
+        if _is_cancel(phone_number):
+            return {"cancel": True}
+        if not phone_number or not phone_number.strip():
+            prompt = "⼿机号不能为空，请重新输⼊。"
+        elif not re.match(r"^1[3-9]\d{9}$", phone_number.strip()):
+            prompt = f"'{phone_number}' 不是有效的⼿机号，请输⼊11位⼿机号码。"
+        else:
+            return {"phone_number": phone_number.strip()}
+
 def get_id(state: ReserveState):
-    prompt = "请输⼊要预定的⾝份证号码"
+    prompt = '请输⼊要预定的⾝份证号码（输⼊"取消"可退出）'
     while True:
         id_card = interrupt(prompt)
-        if id_card:
-            return {"id_card": id_card}
-        # 每次验证失败后，提⽰信息会更新
-        prompt = f"'{id_card}' 不是⼀个有效的⾝份证，请更正。"
+        if _is_cancel(id_card):
+            return {"cancel": True}
+        if not id_card or not id_card.strip():
+            prompt = "⾝份证号码不能为空，请重新输⼊。"
+        elif not re.match(r"^\d{17}[\dXx]$", id_card.strip()):
+            prompt = f"'{id_card}' 不是有效的⾝份证号码，请输⼊18位⾝份证号码。"
+        else:
+            return {"id_card": id_card.strip()}
 # 节点：新增预定消息
 def add_reserve_message(state: ReserveState):
     reserve_prompt = """根据提供的信息，帮我预定房源。
@@ -100,6 +115,12 @@ Args:
             prefs
         )
     return f"已预定房源为：{title}，预定工单号为：{order_id}"
+
+def cancel_node(state: ReserveState):
+    return {"messages": [AIMessage(content="已取消预定，如需帮助请随时告诉我~")]}
+
+def _should_continue(state: ReserveState):
+    return "cancel" if state.get("cancel") else "continue"
 
 tool_node=ToolNode([generate_orders])
 # 节点： 执行模型：1.决定执行工具2.返回最终结果
