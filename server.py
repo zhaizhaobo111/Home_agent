@@ -3,8 +3,10 @@
 import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 LANGGRAPH_URL = "http://localhost:2024"
 

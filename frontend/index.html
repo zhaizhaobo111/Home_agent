@@ -10,13 +10,21 @@
 :root {
   --primary: #6C63FF;
   --primary-dark: #5A52D5;
+  --primary-light: #EDE9FE;
   --accent: #FF6B6B;
+  --accent-warm: #F59E0B;
   --bg: #F0F2F5;
   --bubble-user: #6C63FF;
   --bubble-ai: #FFFFFF;
-  --text: #333;
-  --text-light: #888;
+  --text: #1F2937;
+  --text-light: #6B7280;
+  --text-muted: #9CA3AF;
+  --border: #E5E7EB;
   --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 30px rgba(108,99,255,0.12);
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
 }
 
 body {
@@ -30,9 +38,9 @@ body {
 
 .chat-container {
   width: 480px;
-  height: 92vh;
+  height: 94vh;
   background: #F7F8FA;
-  border-radius: 20px;
+  border-radius: 24px;
   box-shadow: 0 8px 40px rgba(108,99,255,0.15);
   display: flex;
   flex-direction: column;
@@ -42,52 +50,379 @@ body {
 
 /* ── Header ── */
 .header {
-  background: linear-gradient(135deg, #6C63FF 0%, #A78BFA 50%, #F472B6 100%);
-  padding: 18px 24px;
+  background: linear-gradient(135deg, #6C63FF 0%, #8B5CF6 40%, #A78BFA 60%, #F472B6 100%);
+  padding: 16px 20px 14px;
   color: white;
+  flex-shrink: 0;
+}
+.header-top {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
-.header-icon {
-  font-size: 28px;
-  animation: bounce 2s infinite;
-}
+.header-icon { font-size: 26px; animation: bounce 2s infinite; }
 @keyframes bounce {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  50% { transform: translateY(-4px); }
 }
-.header-text h1 { font-size: 18px; font-weight: 600; }
-.header-text p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+.header-text h1 { font-size: 17px; font-weight: 600; letter-spacing: 0.5px; }
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.header-right span {
+  font-size: 13px;
+  opacity: 0.9;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.header-right span:hover { opacity: 1; }
 .status-dot {
   width: 8px; height: 8px;
   background: #4ADE80;
   border-radius: 50%;
-  margin-left: auto;
   animation: pulse 2s infinite;
 }
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+.header-subtitle {
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: 0.75;
+  letter-spacing: 1px;
+}
 
 /* ── Chat Area ── */
 .chat-area {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 16px;
+  overflow-x: hidden;
+  padding: 0;
   scroll-behavior: smooth;
 }
 .chat-area::-webkit-scrollbar { width: 4px; }
 .chat-area::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
 
+/* ── Welcome Section ── */
+.welcome { padding: 20px 16px 10px; }
+
+/* Greeting */
+.greeting {
+  text-align: center;
+  padding: 20px 16px 16px;
+  animation: fadeInUp 0.5s ease;
+}
+.greeting-icon { font-size: 44px; margin-bottom: 10px; }
+.greeting h2 {
+  font-size: 17px;
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+.greeting p {
+  font-size: 13px;
+  color: var(--text-light);
+  line-height: 1.6;
+}
+
+/* Section Title */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 4px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.section-title .dot {
+  width: 4px; height: 16px;
+  background: linear-gradient(180deg, var(--primary), #A78BFA);
+  border-radius: 2px;
+}
+
+/* City Cards - Horizontal Scroll */
+.city-wrapper {
+  position: relative;
+  padding: 0 32px;
+  overflow: hidden;
+}
+.city-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0 12px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  min-width: 0;
+}
+.city-scroll::-webkit-scrollbar { display: none; }
+
+/* Arrow Buttons */
+.scroll-arrow {
+  position: absolute;
+  top: 36px;
+  width: 28px;
+  height: 28px;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  font-size: 14px;
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+  user-select: none;
+}
+.scroll-arrow:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.scroll-arrow.left { left: 0; }
+.scroll-arrow.right { right: 0; }
+.scroll-arrow:active { transform: scale(0.9); }
+
+/* Scrollbar Track */
+.scroll-bar {
+  width: 100%;
+  height: 6px;
+  background: #E5E7EB;
+  border-radius: 3px;
+  margin: 0 0 4px;
+  position: relative;
+  cursor: pointer;
+}
+.scroll-bar-thumb {
+  position: absolute;
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #A78BFA);
+  border-radius: 3px;
+  min-width: 40px;
+  cursor: grab;
+  transition: width 0.2s;
+}
+.scroll-bar-thumb:active { cursor: grabbing; }
+.scroll-bar-thumb:hover {
+  background: linear-gradient(90deg, var(--primary-dark), #8B5CF6);
+}
+
+.city-card {
+  flex-shrink: 0;
+  width: 160px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s;
+  scroll-snap-align: start;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.city-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(108,99,255,0.15);
+}
+.city-card-img {
+  height: 100px;
+  overflow: hidden;
+  position: relative;
+}
+.city-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+.city-card:hover .city-card-img img {
+  transform: scale(1.05);
+}
+.city-card-info {
+  padding: 10px 12px;
+  background: white;
+}
+.city-card-info .city-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.city-card-info .city-desc {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-top: 3px;
+}
+
+/* House Image Cards - Grid */
+.house-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 2px 4px 12px;
+}
+.house-card {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.house-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(108,99,255,0.12);
+}
+.house-card-img {
+  height: 100px;
+  overflow: hidden;
+  position: relative;
+}
+.house-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+.house-card:hover .house-card-img img {
+  transform: scale(1.05);
+}
+.house-card-img .price-tag {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(108,99,255,0.9);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+.house-card-body {
+  padding: 8px 10px;
+}
+.house-card-body .house-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.house-card-body .house-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* Scenario Buttons */
+.scenario-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 4px 12px;
+}
+.scenario-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.25s;
+  text-align: left;
+  line-height: 1.4;
+}
+.scenario-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateX(4px);
+  box-shadow: var(--shadow);
+  background: var(--primary-light);
+}
+.scenario-btn .scenario-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light);
+  border-radius: 10px;
+}
+.scenario-btn:hover .scenario-icon {
+  background: var(--primary);
+  filter: grayscale(1) brightness(10);
+}
+
+/* Personal Center */
+.personal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 2px 4px 16px;
+}
+.personal-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  background: white;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.25s;
+  border: 1.5px solid transparent;
+}
+.personal-item:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.personal-item .personal-icon {
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light);
+  border-radius: 12px;
+}
+.personal-item:hover .personal-icon {
+  background: var(--primary);
+  filter: grayscale(1) brightness(10);
+}
+.personal-item span {
+  font-size: 12px;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+/* ── Messages ── */
+.messages-area {
+  padding: 16px;
+}
 .msg {
   display: flex;
-  margin-bottom: 16px;
-  animation: fadeIn 0.3s ease;
+  margin-bottom: 14px;
+  animation: fadeInUp 0.3s ease;
 }
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .msg.user { justify-content: flex-end; }
@@ -95,10 +430,10 @@ body {
 
 .msg-bubble {
   max-width: 80%;
-  padding: 12px 16px;
-  border-radius: 16px;
+  padding: 11px 14px;
+  border-radius: var(--radius);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.65;
   word-break: break-word;
   white-space: pre-wrap;
 }
@@ -123,9 +458,9 @@ body {
 .interrupt-card {
   background: linear-gradient(135deg, #FEF3C7, #FDE68A);
   border: 2px solid #F59E0B;
-  border-radius: 16px;
+  border-radius: var(--radius);
   padding: 16px;
-  margin-bottom: 16px;
+  margin: 0 16px 14px;
   animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes popIn {
@@ -172,11 +507,11 @@ body {
   transform: translateY(-1px);
 }
 
-/* ── Quick Reply Buttons ── */
+/* Quick Reply Buttons */
 .quick-replies {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
   flex-wrap: wrap;
 }
 .quick-btn {
@@ -200,11 +535,11 @@ body {
   display: none;
   padding: 12px 16px;
   background: white;
-  border-radius: 16px;
+  border-radius: var(--radius);
   border-bottom-left-radius: 4px;
   box-shadow: var(--shadow);
   width: fit-content;
-  margin-bottom: 16px;
+  margin: 0 16px 14px;
 }
 .typing-indicator.show { display: flex; gap: 6px; align-items: center; }
 .typing-dot {
@@ -222,40 +557,48 @@ body {
 
 /* ── Input Area ── */
 .input-area {
-  padding: 12px 16px;
+  padding: 12px 16px 14px;
   background: white;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid var(--border);
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-shrink: 0;
 }
 .input-area input {
   flex: 1;
   padding: 12px 16px;
-  border: 2px solid #E5E7EB;
-  border-radius: 12px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
+  background: #F9FAFB;
 }
 .input-area input:focus {
   border-color: var(--primary);
+  background: white;
+}
+.input-area input::placeholder {
+  color: var(--text-muted);
+  font-size: 13px;
 }
 .input-area button {
   width: 44px; height: 44px;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), #8B5CF6);
   color: white;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   font-size: 18px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 .input-area button:hover {
-  background: var(--primary-dark);
+  background: linear-gradient(135deg, var(--primary-dark), #7C3AED);
   transform: scale(1.05);
 }
 .input-area button:disabled {
@@ -264,64 +607,188 @@ body {
   transform: none;
 }
 
-/* ── Welcome ── */
-.welcome {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--text-light);
-}
-.welcome-icon { font-size: 48px; margin-bottom: 16px; }
-.welcome h2 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
-.welcome p { font-size: 13px; line-height: 1.8; }
-.welcome .examples {
-  margin-top: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-}
-.example-btn {
-  padding: 10px 20px;
-  background: white;
-  border: 1.5px solid #E5E7EB;
-  border-radius: 12px;
-  font-size: 13px;
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 80%;
-}
-.example-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow);
-}
+/* ── Utility ── */
+.hidden { display: none !important; }
+
 </style>
 </head>
 <body>
 
 <div class="chat-container">
+  <!-- Header -->
   <div class="header">
-    <div class="header-icon">🏠</div>
-    <div class="header-text">
-      <h1>租房小助手</h1>
-      <p>智能推荐 · 一键预定</p>
-    </div>
-    <div class="status-dot" id="statusDot"></div>
-  </div>
-
-  <div class="chat-area" id="chatArea">
-    <div class="welcome" id="welcome">
-      <div class="welcome-icon">🏘️</div>
-      <h2>你好，想找什么样的房子？</h2>
-      <p>告诉我你的需求，我来帮你推荐~</p>
-      <div class="examples">
-        <button class="example-btn" onclick="sendExample(this)">🔍 帮我推荐北京 3000-5000 的房子</button>
-        <button class="example-btn" onclick="sendExample(this)">📍 西安雁塔区两室一厅</button>
-        <button class="example-btn" onclick="sendExample(this)">📋 看看我的历史记录</button>
+    <div class="header-top">
+      <div class="header-icon">🏠</div>
+      <div class="header-text">
+        <h1>租房小助手</h1>
+      </div>
+      <div class="header-right">
+        <span id="homeBtn" class="hidden" onclick="goHome()">🏠 首页</span>
+        <span onclick="sendExample('📋 看看我的历史记录')">历史订单</span>
+        <span onclick="sendExample('⚙️ 查看我的租房偏好')">我的</span>
+        <div class="status-dot" id="statusDot"></div>
       </div>
     </div>
+    <div class="header-subtitle">智能匹配 · 一键看房 · 省心租房</div>
+  </div>
+
+  <!-- Chat Area -->
+  <div class="chat-area" id="chatArea">
+    <!-- Welcome -->
+    <div class="welcome" id="welcome">
+
+      <!-- Greeting -->
+      <div class="greeting">
+        <div class="greeting-icon">🏡</div>
+        <h2>你好呀！我是你的专属租房小助手～</h2>
+        <p>告诉我你的租房需求，我来帮你精准推荐合适的房源 ✨</p>
+      </div>
+
+      <!-- Hot Cities -->
+      <div class="section-title">
+        <div class="dot"></div>
+        热门城市推荐
+      </div>
+      <div class="city-wrapper">
+        <div class="scroll-arrow left" onclick="scrollCities(-1)">‹</div>
+        <div class="scroll-arrow right" onclick="scrollCities(1)">›</div>
+        <div class="city-scroll" id="cityScroll">
+          <div class="city-card" onclick="sendExample('帮我推荐北京 3000-5000 元的房子')">
+            <div class="city-card-img"><img src="/static/cities/beijing.jpg" alt="北京" loading="lazy"></div>
+            <div class="city-card-info"><div class="city-name">北京</div><div class="city-desc">3000-5000 元 优选房源</div></div>
+          </div>
+          <div class="city-card" onclick="sendExample('帮我推荐上海整租或合租的房子')">
+            <div class="city-card-img"><img src="/static/cities/shanghai.jpg" alt="上海" loading="lazy"></div>
+            <div class="city-card-info"><div class="city-name">上海</div><div class="city-desc">整租 / 合租 一键筛选</div></div>
+          </div>
+          <div class="city-card" onclick="sendExample('帮我推荐广州地铁沿线通勤友好的房子')">
+            <div class="city-card-img"><img src="/static/cities/guangzhou.jpg" alt="广州" loading="lazy"></div>
+            <div class="city-card-info"><div class="city-name">广州</div><div class="city-desc">地铁沿线 通勤友好房</div></div>
+          </div>
+          <div class="city-card" onclick="sendExample('帮我推荐深圳高性价比的房子')">
+            <div class="city-card-img"><img src="/static/cities/shenzhen.jpg" alt="深圳" loading="lazy"></div>
+            <div class="city-card-info"><div class="city-name">深圳</div><div class="city-desc">年轻人聚集 高性价比</div></div>
+          </div>
+          <div class="city-card" onclick="sendExample('帮我推荐杭州 2500-4000 元的房子')">
+            <div class="city-card-img"><img src="/static/cities/hangzhou.jpg" alt="杭州" loading="lazy"></div>
+            <div class="city-card-info"><div class="city-name">杭州</div><div class="city-desc">西湖畔 宜居之城</div></div>
+          </div>
+          <div class="city-card" onclick="sendExample('帮我推荐嘉兴 1500-3000 元的房子')">
+            <div class="city-card-img"><img src="/static/cities/jiaxing.jpg" alt="嘉兴" loading="lazy"></div>
+            <div class="city-card-info"><div class="city-name">嘉兴</div><div class="city-desc">沪杭同城 高性价比</div></div>
+          </div>
+          <div class="city-card" onclick="sendExample('帮我推荐成都 2000-4000 元的房子')">
+            <div class="city-card-img"><img src="/static/cities/chengdu.jpg" alt="成都" loading="lazy"></div>
+            <div class="city-card-info"><div class="city-name">成都</div><div class="city-desc">安逸生活 美食之都</div></div>
+          </div>
+          <div class="city-card" onclick="sendExample('帮我推荐南京 2500-4500 元的房子')">
+            <div class="city-card-img"><img src="/static/cities/nanjing.jpg" alt="南京" loading="lazy"></div>
+            <div class="city-card-info"><div class="city-name">南京</div><div class="city-desc">六朝古都 文化名城</div></div>
+          </div>
+        </div>
+        <div class="scroll-bar" id="scrollBar">
+          <div class="scroll-bar-thumb" id="scrollBarThumb"></div>
+        </div>
+      </div>
+
+      <!-- Featured Houses -->
+      <div class="section-title">
+        <div class="dot"></div>
+        精选房源
+      </div>
+      <div class="house-grid">
+        <div class="house-card" onclick="sendExample('帮我找长安花园附近的房子')">
+          <div class="house-card-img">
+            <img src="/static/houses/house1.jpg" alt="长安花园" loading="lazy">
+            <span class="price-tag">¥2800/月</span>
+          </div>
+          <div class="house-card-body">
+            <div class="house-name">长安花园</div>
+            <div class="house-meta">2室1厅 · 朝南 · 精装修</div>
+          </div>
+        </div>
+        <div class="house-card" onclick="sendExample('帮我找翠苑小区附近的房子')">
+          <div class="house-card-img">
+            <img src="/static/houses/house2.jpg" alt="翠苑小区" loading="lazy">
+            <span class="price-tag">¥3500/月</span>
+          </div>
+          <div class="house-card-body">
+            <div class="house-name">翠苑小区</div>
+            <div class="house-meta">3室1厅 · 南北通透 · 近地铁</div>
+          </div>
+        </div>
+        <div class="house-card" onclick="sendExample('帮我找阳光城附近的房子')">
+          <div class="house-card-img">
+            <img src="/static/houses/house3.jpg" alt="阳光城" loading="lazy">
+            <span class="price-tag">¥4200/月</span>
+          </div>
+          <div class="house-card-body">
+            <div class="house-name">阳光城</div>
+            <div class="house-meta">2室1厅 · 带阳台 · 可做饭</div>
+          </div>
+        </div>
+        <div class="house-card" onclick="sendExample('帮我找万科城市花园附近的房子')">
+          <div class="house-card-img">
+            <img src="/static/houses/house4.jpg" alt="万科城市花园" loading="lazy">
+            <span class="price-tag">¥5000/月</span>
+          </div>
+          <div class="house-card-body">
+            <div class="house-name">万科城市花园</div>
+            <div class="house-meta">整租 · 精装修 · 品质社区</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario Templates -->
+      <div class="section-title">
+        <div class="dot"></div>
+        场景化需求，一键发送
+      </div>
+      <div class="scenario-list">
+        <button class="scenario-btn" onclick="sendExample('帮我推荐北京 3000-5000 元的一居室')">
+          <span class="scenario-icon">🔍</span>
+          帮我推荐北京 3000-5000 元的一居室
+        </button>
+        <button class="scenario-btn" onclick="sendExample('西安雁塔区 两室一厅 近地铁')">
+          <span class="scenario-icon">📍</span>
+          西安雁塔区 两室一厅 近地铁
+        </button>
+        <button class="scenario-btn" onclick="sendExample('帮我找带阳台、可做饭的房子')">
+          <span class="scenario-icon">🧺</span>
+          帮我找带阳台、可做饭的房子
+        </button>
+        <button class="scenario-btn" onclick="sendExample('优先推荐通勤 30 分钟内的房源')">
+          <span class="scenario-icon">🚶</span>
+          优先推荐离公司通勤 30 分钟内的房源
+        </button>
+      </div>
+
+      <!-- Personal Center -->
+      <div class="section-title">
+        <div class="dot"></div>
+        个人中心
+      </div>
+      <div class="personal-grid">
+        <div class="personal-item" onclick="sendExample('📋 看看我的历史记录')">
+          <div class="personal-icon">📋</div>
+          <span>租房历史</span>
+        </div>
+        <div class="personal-item" onclick="sendExample('❤️ 查看我的收藏房源')">
+          <div class="personal-icon">❤️</div>
+          <span>收藏房源</span>
+        </div>
+        <div class="personal-item" onclick="sendExample('⚙️ 查看我的租房偏好')">
+          <div class="personal-icon">⚙️</div>
+          <span>租房偏好</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Messages container -->
+    <div class="messages-area hidden" id="messagesArea"></div>
+
+    <!-- Typing indicator -->
     <div class="typing-indicator" id="typing">
       <div class="typing-dot"></div>
       <div class="typing-dot"></div>
@@ -329,8 +796,9 @@ body {
     </div>
   </div>
 
+  <!-- Input Area -->
   <div class="input-area">
-    <input type="text" id="msgInput" placeholder="输入你的需求..." autocomplete="off">
+    <input type="text" id="msgInput" placeholder="告诉我你的城市、预算和房型，比如：杭州 2500-3500 合租" autocomplete="off">
     <button id="sendBtn" onclick="sendMessage()">➤</button>
   </div>
 </div>
@@ -361,8 +829,81 @@ document.getElementById('msgInput').addEventListener('keydown', (e) => {
   }
 });
 
-function sendExample(btn) {
-  document.getElementById('msgInput').value = btn.textContent.replace(/^[^\s]+\s/, '');
+// ── City Scroll: Arrow + Scrollbar ──
+function scrollCities(dir) {
+  const el = document.getElementById('cityScroll');
+  if (!el) return;
+  el.scrollBy({ left: dir * 200, behavior: 'smooth' });
+}
+
+(function() {
+  const cityScroll = document.getElementById('cityScroll');
+  const scrollBar = document.getElementById('scrollBar');
+  const thumb = document.getElementById('scrollBarThumb');
+  if (!cityScroll || !scrollBar || !thumb) return;
+
+  function updateThumb() {
+    const maxScroll = cityScroll.scrollWidth - cityScroll.clientWidth;
+    if (maxScroll <= 0) {
+      thumb.style.width = '100%';
+      thumb.style.left = '0';
+      return;
+    }
+    const ratio = cityScroll.clientWidth / cityScroll.scrollWidth;
+    const barWidth = scrollBar.clientWidth;
+    const thumbW = Math.max(40, ratio * barWidth);
+    const scrollRatio = cityScroll.scrollLeft / maxScroll;
+    const maxLeft = barWidth - thumbW;
+    thumb.style.width = thumbW + 'px';
+    thumb.style.left = (scrollRatio * maxLeft) + 'px';
+  }
+
+  cityScroll.addEventListener('scroll', updateThumb);
+  window.addEventListener('resize', updateThumb);
+  setTimeout(updateThumb, 100);
+
+  // Drag the thumb
+  let dragging = false, startPageX, startLeft;
+  thumb.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    dragging = true;
+    startPageX = e.pageX;
+    startLeft = parseFloat(thumb.style.left) || 0;
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const dx = e.pageX - startPageX;
+    const barWidth = scrollBar.clientWidth;
+    const thumbW = thumb.offsetWidth;
+    const maxLeft = barWidth - thumbW;
+    const newLeft = Math.max(0, Math.min(maxLeft, startLeft + dx));
+    thumb.style.left = newLeft + 'px';
+    const maxScroll = cityScroll.scrollWidth - cityScroll.clientWidth;
+    cityScroll.scrollLeft = (newLeft / maxLeft) * maxScroll;
+  });
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+    document.body.style.userSelect = '';
+  });
+
+  // Click on track to jump
+  scrollBar.addEventListener('click', (e) => {
+    if (e.target === thumb) return;
+    const rect = scrollBar.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const barWidth = scrollBar.clientWidth;
+    const thumbW = thumb.offsetWidth;
+    const maxLeft = barWidth - thumbW;
+    const newLeft = Math.max(0, Math.min(maxLeft, clickX - thumbW / 2));
+    thumb.style.left = newLeft + 'px';
+    const maxScroll = cityScroll.scrollWidth - cityScroll.clientWidth;
+    cityScroll.scrollLeft = (newLeft / maxLeft) * maxScroll;
+  });
+})();
+
+function sendExample(text) {
+  document.getElementById('msgInput').value = text;
   sendMessage();
 }
 
@@ -429,7 +970,6 @@ async function streamRun(body) {
           try {
             const data = JSON.parse(dataStr);
 
-            // Helper: check if a message is a final AI text response
             function isAiTextMsg(msg) {
               if (!msg) return false;
               const t = msg.type || msg.role || '';
@@ -439,13 +979,10 @@ async function streamRun(body) {
               return c && (typeof c === 'string' ? c.trim() : true);
             }
 
-            // Handle values / updates events
             if (currentEvent === 'values' || currentEvent === 'updates') {
-              // Check for __interrupt__ inside values event data
               if (data?.__interrupt__ && Array.isArray(data.__interrupt__) && data.__interrupt__[0]?.value) {
                 interruptValue = data.__interrupt__[0].value;
               }
-              // Extract AI text messages
               if (data?.messages) {
                 const msgs = data.messages;
                 const lastMsg = msgs[msgs.length - 1];
@@ -455,7 +992,6 @@ async function streamRun(body) {
               }
             }
 
-            // Handle standalone __interrupt__ event
             if (currentEvent === '__interrupt__' || (Array.isArray(data) && data[0]?.value)) {
               if (data[0]?.value) {
                 interruptValue = data[0].value;
@@ -464,7 +1000,6 @@ async function streamRun(body) {
               }
             }
 
-            // Handle messages event (full message list from stream)
             if (currentEvent === 'messages' && Array.isArray(data)) {
               const lastMsg = data[data.length - 1];
               if (isAiTextMsg(lastMsg)) {
@@ -495,10 +1030,28 @@ async function streamRun(body) {
 }
 
 // ── UI Helpers ──
-function addMessage(role, text) {
-  const area = document.getElementById('chatArea');
-  const typing = document.getElementById('typing');
+function hideWelcome() {
+  const w = document.getElementById('welcome');
+  if (w) w.classList.add('hidden');
+  const m = document.getElementById('messagesArea');
+  if (m) m.classList.remove('hidden');
+  document.getElementById('homeBtn').classList.remove('hidden');
+}
 
+function goHome() {
+  const w = document.getElementById('welcome');
+  if (w) w.classList.remove('hidden');
+  const m = document.getElementById('messagesArea');
+  if (m) m.classList.add('hidden');
+  document.getElementById('homeBtn').classList.add('hidden');
+  // 清空消息记录
+  m.innerHTML = '';
+  // 滚回顶部
+  document.getElementById('chatArea').scrollTop = 0;
+}
+
+function addMessage(role, text) {
+  const area = document.getElementById('messagesArea');
   const div = document.createElement('div');
   div.className = `msg ${role}`;
 
@@ -511,25 +1064,22 @@ function addMessage(role, text) {
     ${role === 'user' ? emoji : ''}
   `;
 
-  area.insertBefore(div, typing);
+  area.appendChild(div);
   scrollToBottom();
 }
 
 function addSystemMessage(text) {
-  const area = document.getElementById('chatArea');
-  const typing = document.getElementById('typing');
-
+  hideWelcome();
+  const area = document.getElementById('messagesArea');
   const div = document.createElement('div');
   div.className = 'msg ai';
   div.innerHTML = `<div class="msg-bubble" style="background:#FEF3C7;color:#92400E;text-align:center;width:100%;max-width:100%">${text}</div>`;
-  area.insertBefore(div, typing);
+  area.appendChild(div);
   scrollToBottom();
 }
 
 function showInterrupt(prompt) {
-  const area = document.getElementById('chatArea');
-  const typing = document.getElementById('typing');
-
+  const area = document.getElementById('messagesArea');
   const card = document.createElement('div');
   card.className = 'interrupt-card';
   card.innerHTML = `
@@ -545,11 +1095,9 @@ function showInterrupt(prompt) {
       <button class="quick-btn" onclick="quickReply(this, '不需要')">不需要</button>
     </div>
   `;
-
-  area.insertBefore(card, typing);
+  area.appendChild(card);
   scrollToBottom();
 
-  // Focus the interrupt input
   setTimeout(() => {
     const inp = card.querySelector('#interruptInput');
     if (inp) {
@@ -568,11 +1116,7 @@ function submitInterrupt(el) {
   const card = el.closest('.interrupt-card');
   const input = card.querySelector('input');
   const value = input.value.trim() || '跳过';
-
-  // Remove the interrupt card
   card.remove();
-
-  // Resume with user's answer
   resumeInterrupt(value);
 }
 
@@ -588,10 +1132,6 @@ function showTyping() {
 }
 function hideTyping() {
   document.getElementById('typing').classList.remove('show');
-}
-function hideWelcome() {
-  const w = document.getElementById('welcome');
-  if (w) w.style.display = 'none';
 }
 function setProcessing(v) {
   isProcessing = v;
